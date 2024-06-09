@@ -78,3 +78,20 @@ class Author:
         CURSOR.execute(sql, (self.id,))
         magazines_data = CURSOR.fetchall()
         return [Magazine(*data) for data in magazines_data]
+
+    def delete(self):
+        sql = """
+            DELETE FROM authors
+            WHERE id = ?
+        """
+        CURSOR.execute(sql, (self.id,))
+        CONN.commit()
+        del self.all[self.id]
+
+    @classmethod
+    def drop_table(cls):
+        sql = """
+            DROP TABLE IF EXISTS authors
+        """
+        CURSOR.execute(sql)
+        CONN.commit()

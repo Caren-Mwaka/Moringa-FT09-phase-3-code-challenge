@@ -120,3 +120,21 @@ class Article:
         CURSOR.execute(sql, (self.magazine_id,))
         magazine_data = CURSOR.fetchone()
         return Magazine(*magazine_data) if magazine_data else None
+
+    def delete(self):
+        if hasattr(self, 'id'):
+            sql = """
+                DELETE FROM articles
+                WHERE id = ?
+            """
+            CURSOR.execute(sql, (self.id,))
+            CONN.commit()
+            del type(self).all[self.id]
+
+    @classmethod
+    def drop_table(cls):
+        sql = """
+            DROP TABLE IF EXISTS articles
+        """
+        CURSOR.execute(sql)
+        CONN.commit()

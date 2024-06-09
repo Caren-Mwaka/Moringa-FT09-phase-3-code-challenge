@@ -1,17 +1,9 @@
 import unittest
-from __init__ import CURSOR, CONN 
 from models.author import Author
 from models.article import Article
 from models.magazine import Magazine
 
-
 class TestModels(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        CURSOR.execute("DELETE FROM articles")
-        CURSOR.execute("DELETE FROM authors")
-        CURSOR.execute("DELETE FROM magazines")
-        CONN.commit()
 
     def test_author_creation(self):
         author = Author(1, "John Doe")
@@ -79,5 +71,6 @@ class TestModels(unittest.TestCase):
         magazine = Magazine(1, "Tech Weekly", "Technology")
         contributing_authors = magazine.contributing_authors()
         self.assertIsNone(contributing_authors)  
+
 if __name__ == "__main__":
     unittest.main()
