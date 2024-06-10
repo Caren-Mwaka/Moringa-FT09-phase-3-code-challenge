@@ -1,5 +1,4 @@
-from database.connection import get_db_connection
+from database.connection import CURSOR, CONN
 
-CONN = get_db_connection()
-CURSOR = CONN.cursor()
+
 

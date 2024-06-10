@@ -1,15 +1,17 @@
-from __init__ import CURSOR, CONN
+from database.connection import CURSOR, CONN
 
 class Author:
-    all = {}
+    all_authors = {}
 
     def __init__(self, id=None, name=None):
-        if id is not None:
-            self.id = id
-        self.name = name
+        self._id = id  
+        self._name = None  
+        self.name = name   
+        if id is not None:    
+            type(self).all_authors[self.id] = self
 
     def __repr__(self):
-        return f'<Author {self.name}>'
+        return f'<Author id:{self.id}, name:{self.name}>'
 
     @property
     def id(self):
@@ -28,13 +30,30 @@ class Author:
 
     @name.setter
     def name(self, value):
-        if hasattr(self, '_name') and self._name is not None:
+        if self._name is not None:
             raise AttributeError("Name cannot be changed after the person is instantiated")
         if not isinstance(value, str):
             raise TypeError("Name must be of type str")
         if len(value) == 0:
             raise ValueError("Name must be longer than 0 characters")
         self._name = value
+
+    @classmethod
+    def create_table(cls):
+        sql = """CREATE TABLE IF NOT EXISTS authors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL
+        );"""
+        CURSOR.execute(sql)
+        CONN.commit()
+
+    @classmethod
+    def drop_table(cls):
+        sql = """
+            DROP TABLE IF EXISTS authors
+        """
+        CURSOR.execute(sql)
+        CONN.commit()
 
     def save(self):
         sql = """
@@ -45,7 +64,7 @@ class Author:
         CONN.commit()
 
         self.id = CURSOR.lastrowid
-        type(self).all[self.id] = self
+        Author.all_authors[self.id] = self
 
     @classmethod
     def create(cls, name):
@@ -54,7 +73,7 @@ class Author:
         return author
 
     def articles(self):
-        from models.article import Article 
+        from models.article import Article
         sql = """
             SELECT articles.id, articles.title, articles.content
             FROM articles
@@ -66,7 +85,7 @@ class Author:
         return [Article(*data) for data in articles_data]
 
     def magazines(self):
-        from models.magazine import Magazine 
+        from models.magazine import Magazine
         sql = """
             SELECT magazines.id, magazines.name, magazines.category
             FROM articles
@@ -86,12 +105,4 @@ class Author:
         """
         CURSOR.execute(sql, (self.id,))
         CONN.commit()
-        del self.all[self.id]
-
-    @classmethod
-    def drop_table(cls):
-        sql = """
-            DROP TABLE IF EXISTS authors
-        """
-        CURSOR.execute(sql)
-        CONN.commit()
+        del Author.all_authors[self.id]

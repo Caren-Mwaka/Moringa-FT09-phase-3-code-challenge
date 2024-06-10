@@ -1,13 +1,14 @@
-from __init__ import CURSOR, CONN
+from database.connection import CURSOR, CONN
 
 class Magazine:
-    all = {}
+    all_magazines = {}
 
-    def __init__(self, id, name, category):
-        self.id = id
+    def __init__(self, id=None, name=None, category=None):
+        self._id = id  
         self.name = name
         self.category = category
-        type(self).all[self.id] = self
+        if id is not None:    
+            type(self).all_magazines[self.id] = self
 
     def __repr__(self):
         return f'<Magazine {self.name}, Category: {self.category}>'
@@ -47,7 +48,28 @@ class Magazine:
             raise ValueError("Category must be longer than 0 characters")
         self._category = value
 
+    @classmethod
+    def create_table(cls):
+        """Create the magazines table if it doesn't exist."""
+        sql = """CREATE TABLE IF NOT EXISTS magazines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL
+        );"""
+        CURSOR.execute(sql)
+        CONN.commit()
+
+    @classmethod
+    def drop_table(cls):
+        """Drop the magazines table."""
+        sql = """
+            DROP TABLE IF EXISTS magazines
+        """
+        CURSOR.execute(sql)
+        CONN.commit()
+
     def save(self):
+        """Save the magazine instance to the database."""
         sql = """
             INSERT INTO magazines (name, category)
             VALUES (?, ?)
@@ -55,10 +77,11 @@ class Magazine:
         CURSOR.execute(sql, (self.name, self.category))
         CONN.commit()
         self.id = CURSOR.lastrowid
-        type(self).all[self.id] = self
+        type(self).all_magazines[self.id] = self
 
     def update(self):
-        if hasattr(self, '_id'):
+        """Update the magazine details in the database."""
+        if hasattr(self, 'id'):
             sql = """
                 UPDATE magazines
                 SET name = ?, category = ?
@@ -69,12 +92,14 @@ class Magazine:
 
     @classmethod
     def create(cls, name, category):
+        """Create a new magazine and save it to the database."""
         magazine = cls(name=name, category=category)
         magazine.save()
         return magazine
 
     def articles(self):
-        from models.article import Article  
+        """Retrieve articles associated with the magazine."""
+        from models.article import Article
         sql = """
             SELECT articles.id, articles.title, articles.content, articles.author_id, articles.magazine_id
             FROM articles
@@ -86,9 +111,10 @@ class Magazine:
         return [Article(*data) for data in articles_data]
 
     def contributors(self):
-        from models.author import Author  
+        """Retrieve authors who contributed to the magazine."""
+        from models.author import Author
         sql = """
-            SELECT authors.id, authors.name
+            SELECT authors.name
             FROM articles
             INNER JOIN authors ON articles.author_id = authors.id
             WHERE articles.magazine_id = ?
@@ -96,9 +122,10 @@ class Magazine:
         """
         CURSOR.execute(sql, (self.id,))
         contributors_data = CURSOR.fetchall()
-        return [Author(*data) for data in contributors_data]
+        return [Author(name=data[0]) for data in contributors_data]
 
     def article_titles(self):
+        """Retrieve titles of articles in the magazine."""
         sql = """
             SELECT title
             FROM articles
@@ -106,12 +133,13 @@ class Magazine:
         """
         CURSOR.execute(sql, (self.id,))
         titles = CURSOR.fetchall()
-        return [title[0] for title in titles] if titles else None
+        return [title[0] for title in titles]
 
     def contributing_authors(self):
-        from models.author import Author  
+        """Retrieve authors who contributed more than 2 articles to the magazine."""
+        from models.author import Author
         sql = """
-            SELECT authors.id, authors.name
+            SELECT authors.name
             FROM articles
             INNER JOIN authors ON articles.author_id = authors.id
             WHERE articles.magazine_id = ?
@@ -120,21 +148,14 @@ class Magazine:
         """
         CURSOR.execute(sql, (self.id,))
         contributors_data = CURSOR.fetchall()
-        return [Author(*data) for data in contributors_data] if contributors_data else None
+        return [Author(name=data[0]) for data in contributors_data]
 
     def delete(self):
+        """Delete the magazine from the database."""
         sql = """
             DELETE FROM magazines
             WHERE id = ?
         """
         CURSOR.execute(sql, (self.id,))
         CONN.commit()
-        del self.all[self.id]
-
-    @classmethod
-    def drop_table(cls):
-        sql = """
-            DROP TABLE IF EXISTS magazines
-        """
-        CURSOR.execute(sql)
-        CONN.commit()
+        del type(self).all_magazines[self.id]

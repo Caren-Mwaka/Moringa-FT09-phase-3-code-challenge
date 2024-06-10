@@ -1,15 +1,16 @@
-from __init__ import CURSOR, CONN
+from database.connection import CURSOR, CONN
 
 class Article:
     all = {}
 
-    def __init__(self, id, title, content, author_id, magazine_id):
-        self.id = id
+    def __init__(self, id=None, title=None, content=None, author_id=None, magazine_id=None):
+        self._id = id  
         self.title = title
         self.content = content
         self.author_id = author_id
         self.magazine_id = magazine_id
-        type(self).all[self.id] = self
+        if self._id is not None:
+            type(self).all[self._id] = self
 
     def __repr__(self):
         return f'<Article {self.title}>'
@@ -70,6 +71,28 @@ class Article:
             self._magazine_id = value
         else:
             raise TypeError("magazine_id must be of type int")
+        
+    @classmethod
+    def create_table(cls):
+        sql = """CREATE TABLE IF NOT EXISTS articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            author_id INTEGER,
+            magazine_id INTEGER,
+            FOREIGN KEY (author_id) REFERENCES authors (id),
+            FOREIGN KEY (magazine_id) REFERENCES magazines (id)
+        );"""
+        CURSOR.execute(sql)
+        CONN.commit()
+
+    @classmethod
+    def drop_table(cls):
+        sql = """
+            DROP TABLE IF EXISTS articles
+        """
+        CURSOR.execute(sql)
+        CONN.commit()
 
     def save(self):
         sql = """
@@ -78,7 +101,7 @@ class Article:
         """
         CURSOR.execute(sql, (self.title, self.content, self.author_id, self.magazine_id))
         CONN.commit()
-        self.id = CURSOR.lastrowid
+        self.id = CURSOR.lastrowid  
         type(self).all[self.id] = self
 
     def update(self):
@@ -93,13 +116,14 @@ class Article:
 
     @classmethod
     def create(cls, title, content, author_id, magazine_id):
+        """Create a new article and save it to the database."""
         article = cls(title=title, content=content, author_id=author_id, magazine_id=magazine_id)
         article.save()
         return article
 
     @property
     def author(self):
-        from models.author import Author  
+        from author import Author  
         sql = """
             SELECT id, name
             FROM authors
@@ -111,7 +135,7 @@ class Article:
 
     @property
     def magazine(self):
-        from models.magazine import Magazine  
+        from magazine import Magazine  
         sql = """
             SELECT id, name, category
             FROM magazines
@@ -131,10 +155,4 @@ class Article:
             CONN.commit()
             del type(self).all[self.id]
 
-    @classmethod
-    def drop_table(cls):
-        sql = """
-            DROP TABLE IF EXISTS articles
-        """
-        CURSOR.execute(sql)
-        CONN.commit()
+
